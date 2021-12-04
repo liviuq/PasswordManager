@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -8,17 +9,14 @@
 #include <netdb.h>
 #include <string.h>
 
-/* codul de eroare returnat de anumite apeluri */
-extern int errno;
-
-/* portul de conectare la server*/
-int port;
+#define LOCAL_MESSAGE_LEN 256
 
 int main(int argc, char *argv[])
 {
-	int sd;					   // descriptorul de socket
+	int32_t exit_client = 0;
+	int32_t port;
+	int32_t sd;				   // descriptorul de socket
 	struct sockaddr_in server; // structura folosita pentru conectare
-	char msg[100];			   // mesajul trimis
 
 	/* exista toate argumentele in linia de comanda? */
 	if (argc != 3)
@@ -52,32 +50,56 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	/* citirea mesajului */
-	while (1)
+	while (!exit_client)
 	{
-		bzero(msg, 100);
-		printf("[client]Introduceti un nume: ");
-		fflush(stdout);
-		read(0, msg, 100);
+		// reading the number of bytes from the server
+		int32_t length_in = 0;
+		if (read(sd, &length_in, sizeof(length_in)) == -1)
+		{
+			printf("%s on line %d\n", strerror(errno), __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		printf("[CLIENT] Length of message is %d\n", length_in);
 
-		/* trimiterea mesajului la server */
-		if (write(sd, msg, 100) <= 0)
+		// reading the whole message
+		char *incoming_message = malloc(sizeof(char) * length_in);
+		if (read(sd, incoming_message, length_in) == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
 			exit(EXIT_FAILURE);
 		}
 
-		/* citirea raspunsului dat de server 
-     (apel blocant pina cind serverul raspunde) */
-		if (read(sd, msg, 100) < 0)
+		// displaying the message
+		printf("%s\n", incoming_message);
+
+		// reading the input from the user
+		char message[LOCAL_MESSAGE_LEN];
+		if (read(STDIN_FILENO, message, LOCAL_MESSAGE_LEN) == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
 			exit(EXIT_FAILURE);
 		}
-		/* afisam mesajul primit */
-		printf("[REPLY] %s\n", msg);
+
+		// writing to the server the response's length
+		int32_t length_out = 0;
+		length_out = strlen(message);
+		if (write(sd, &length_out, sizeof(length_out)) == -1)
+		{
+			printf("%s on line %d\n", strerror(errno), __LINE__);
+			exit(EXIT_FAILURE);
+		}
+
+		// writing to the server the whole response
+		if (write(sd, message, length_out) == -1)
+		{
+			printf("%s on line %d\n", strerror(errno), __LINE__);
+			exit(EXIT_FAILURE);
+		}
+
+		// freeing the memory
+		free(incoming_message);
 	}
-	/* inchidem conexiunea, am terminat */
+
 	close(sd);
 
 	return 0;
