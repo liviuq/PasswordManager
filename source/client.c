@@ -1,23 +1,84 @@
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <errno.h>
+#include <unistd.h>
 #include <stdio.h>
-#include <libxml/xmlmemory.h>
-#include <libxml/parser.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <string.h>
 
-#include "xmlfunctions.h" //functions to parse questions.xml
-#include "djb2.h"		  //function for hashing username
+/* codul de eroare returnat de anumite apeluri */
+extern int errno;
 
-int main(int argc, char **argv)
+/* portul de conectare la server*/
+int port;
+
+int main(int argc, char *argv[])
 {
-	printf("%ld\n", hash("andrew"));
-	char *docname;
+	int sd;					   // descriptorul de socket
+	struct sockaddr_in server; // structura folosita pentru conectare
+	char msg[100];			   // mesajul trimis
 
-	if (argc <= 1)
+	/* exista toate argumentele in linia de comanda? */
+	if (argc != 3)
 	{
-		printf("Usage: %s docname\n", argv[0]);
-		return (0);
+		printf("Sintaxa: %s <adresa_server> <port>\n", argv[0]);
+		return -1;
 	}
 
-	docname = argv[1];
-	parseDoc(docname);
+	/* stabilim portul */
+	port = atoi(argv[2]);
+
+	/* cream socketul */
+	if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+	{
+		printf("%s on line %d\n", strerror(errno), __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	/* umplem structura folosita pentru realizarea conexiunii cu serverul */
+	/* familia socket-ului */
+	server.sin_family = AF_INET;
+	/* adresa IP a serverului */
+	server.sin_addr.s_addr = inet_addr(argv[1]);
+	/* portul de conectare */
+	server.sin_port = htons(port);
+
+	/* ne conectam la server */
+	if (connect(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
+	{
+		printf("%s on line %d\n", strerror(errno), __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	/* citirea mesajului */
+	while (1)
+	{
+		bzero(msg, 100);
+		printf("[client]Introduceti un nume: ");
+		fflush(stdout);
+		read(0, msg, 100);
+
+		/* trimiterea mesajului la server */
+		if (write(sd, msg, 100) <= 0)
+		{
+			printf("%s on line %d\n", strerror(errno), __LINE__);
+			exit(EXIT_FAILURE);
+		}
+
+		/* citirea raspunsului dat de server 
+     (apel blocant pina cind serverul raspunde) */
+		if (read(sd, msg, 100) < 0)
+		{
+			printf("%s on line %d\n", strerror(errno), __LINE__);
+			exit(EXIT_FAILURE);
+		}
+		/* afisam mesajul primit */
+		printf("[REPLY] %s\n", msg);
+	}
+	/* inchidem conexiunea, am terminat */
+	close(sd);
 
 	return 0;
 }
