@@ -192,42 +192,45 @@ int main(int argc, char **argv)
 							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
 
-							if ((strcmp(username, "liviu") == 0) && (strcmp(password, "1234") == 0))
-							{
-								login = 1;
-							}
+							//if exists file user.xml, check password.
+							//if password is ok, login = 1;
+							//if password is not ok, relogin.
+							//if !exists user.xml, ask user if he wants to register
+							//if user register, create xml.
+							//if user not register, relogin.
 
-							fflush(stdout);
-							printf("You made it, %s:%s", username, password);
-							fflush(stdout);
+							//generate the name of the file to be opened
+							char userxml[256];
+							memset(userxml, 0, 255);
+							strcat(userxml, username);
+							strcat(userxml, ".xml");
+
+							int32_t register_bit = 0;
+							//check if it exists
+							if(access(userxml, F_OK) != 0) //file does not exist
+							{
+								//ask user if he wants to register
+								if(register_bit == 1)
+								{
+									//create user.xml
+									//add <login> field with 1
+								}
+								else
+								{
+									continue;
+								}
+							}
+							else //file exists => user exists
+							{
+								//open xml file
+								//if password is ok, login = 1, replace <login> with 1
+								//else continue
+							}
 						}
-						break;
+
+						//Logged in as user:pass
 						fflush(stdout);
 
-						/*if (read(client, msg, 100) <= 0)
-						{
-								perror("[server]Eroare la read() de la client.\n");
-								close(client);
-								exit(EXIT_SUCCESS);
-						}
-						else
-						{
-								printf("[server]Mesajul a fost receptionat...%s\n", msg);
-
-								pregatim mesajul de raspuns
-								bzero(msgrasp, 100);
-								strcat(msgrasp, "Hello ");
-								strcat(msgrasp, msg);
-
-								printf("[server]Trimitem mesajul inapoi...%s\n", msgrasp);
-
-								 returnam mesajul clientului
-								if (write(client, msgrasp, 100) <= 0)
-								{
-										perror("[server]Eroare la write() catre client.\n");
-										continue;
-								}
-						}*/
 					}
 					/* am terminat cu acest client, inchidem conexiunea */
 					close(client);
@@ -236,4 +239,6 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+
+	return EXIT_SUCCESS;
 }
