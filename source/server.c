@@ -97,13 +97,13 @@ int main(int argc, char **argv)
 					printf("[SERVER] Connection established.\n");
 					fflush(stdout);
 
-					int32_t login = 0;		 // login = 0 -> client not logged in
-											 // login = 1 -> client logged in
-					int32_t exit_server = 0; // the state of the server
+					int32_t login = 0; // login = 0 -> client not logged in
+					// login = 1 -> client logged in
+					int32_t exit_client = 0;
 					char *username = NULL;
 					char *password = NULL;
 
-					while (!exit_server)
+					while (!exit_client)
 					{
 						// enter a loop while the user logins
 						while (!login)
@@ -135,6 +135,7 @@ int main(int argc, char **argv)
 
 							// malloc the username
 							username = malloc(sizeof(char) * username_length);
+							memset(username, 0, username_length);
 
 							// reading the username
 							if (read(client, username, username_length) == -1)
@@ -142,7 +143,7 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							username[username_length - 1] = '\0';
+							username[strlen(username) - 1] = '\0';
 
 							fflush(stdout);
 							printf("[SERVER] Username is %s\n", username);
@@ -175,7 +176,8 @@ int main(int argc, char **argv)
 							}
 
 							// malloc the password
-							password = malloc(sizeof(char) * password_length + 1);
+							password = malloc(sizeof(char) * password_length);
+							memset(password, 0, password_length);
 
 							// reading the password
 							int32_t bytes_read = 0;
@@ -184,10 +186,10 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							password[bytes_read - 1] = '\0';
+							password[strlen(password) - 1] = '\0';
 
 							fflush(stdout);
-							printf("[SERVER] Password is %s\n, bytes in: %d", password, bytes_read);
+							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
 
 							if ((strcmp(username, "liviu") == 0) && (strcmp(password, "1234") == 0))
@@ -196,40 +198,35 @@ int main(int argc, char **argv)
 							}
 
 							fflush(stdout);
-							printf("strcmp cu liviu: %d, strcmp cu 1234: %d\n", strcmp(username, "liviu"), strcmp(password, "1234"));
+							printf("You made it, %s:%s", username, password);
 							fflush(stdout);
-
-							// free
-							free(username);
-							free(password);
 						}
-						printf("You made it.\n");
 						break;
 						fflush(stdout);
 
 						/*if (read(client, msg, 100) <= 0)
 						{
-							perror("[server]Eroare la read() de la client.\n");
-							close(client);
-							exit(EXIT_SUCCESS);
+								perror("[server]Eroare la read() de la client.\n");
+								close(client);
+								exit(EXIT_SUCCESS);
 						}
 						else
 						{
-							printf("[server]Mesajul a fost receptionat...%s\n", msg);
+								printf("[server]Mesajul a fost receptionat...%s\n", msg);
 
-							pregatim mesajul de raspuns
-							bzero(msgrasp, 100);
-							strcat(msgrasp, "Hello ");
-							strcat(msgrasp, msg);
+								pregatim mesajul de raspuns
+								bzero(msgrasp, 100);
+								strcat(msgrasp, "Hello ");
+								strcat(msgrasp, msg);
 
-							printf("[server]Trimitem mesajul inapoi...%s\n", msgrasp);
+								printf("[server]Trimitem mesajul inapoi...%s\n", msgrasp);
 
-							 returnam mesajul clientului
-							if (write(client, msgrasp, 100) <= 0)
-							{
-								perror("[server]Eroare la write() catre client.\n");
-								continue;
-							}
+								 returnam mesajul clientului
+								if (write(client, msgrasp, 100) <= 0)
+								{
+										perror("[server]Eroare la write() catre client.\n");
+										continue;
+								}
 						}*/
 					}
 					/* am terminat cu acest client, inchidem conexiunea */
@@ -238,6 +235,5 @@ int main(int argc, char **argv)
 				}
 			}
 		}
-
-	} /* while */
+	}
 }
