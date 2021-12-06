@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <netdb.h>
 #include <string.h>
 
 #define LOCAL_MESSAGE_LEN 256
@@ -15,7 +14,7 @@ int main(int argc, char *argv[])
 {
 	int32_t exit_client = 0;
 	int32_t port;
-	int32_t sd;				   // descriptorul de socket
+	int32_t sd;                                // descriptorul de socket
 	struct sockaddr_in server; // structura folosita pentru conectare
 
 	/* exista toate argumentele in linia de comanda? */
@@ -63,6 +62,8 @@ int main(int argc, char *argv[])
 
 		// reading the whole message
 		char *incoming_message = malloc(sizeof(char) * length_in);
+		memset(incoming_message, 0, length_in);
+
 		if (read(sd, incoming_message, length_in) == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -73,7 +74,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", incoming_message);
 
 		// reading the input from the user
-		char message[LOCAL_MESSAGE_LEN];
+		char *message = malloc(sizeof(char) * LOCAL_MESSAGE_LEN);
+		memset(message, 0, LOCAL_MESSAGE_LEN);
 		if (read(STDIN_FILENO, message, LOCAL_MESSAGE_LEN) == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -81,8 +83,7 @@ int main(int argc, char *argv[])
 		}
 
 		// writing to the server the response's length
-		int32_t length_out = 0;
-		length_out = strlen(message);
+		int32_t length_out = strlen(message);
 		if (write(sd, &length_out, sizeof(length_out)) == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -98,9 +99,9 @@ int main(int argc, char *argv[])
 
 		// freeing the memory
 		free(incoming_message);
+		free(message);
 	}
 
 	close(sd);
-
 	return 0;
 }
