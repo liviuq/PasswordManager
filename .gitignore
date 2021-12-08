@@ -1,1 +1,3 @@
-/bin/*
+bin/client
+bin/test
+bin/server
