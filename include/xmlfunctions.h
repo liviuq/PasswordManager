@@ -1,8 +1,6 @@
 #ifndef XMLFUNCTIONS_H_
 #define XMLFUNCTIONS_H_
 
-void parseQuestion(xmlDocPtr doc, xmlNodePtr cur);
-
-void parseDoc(char *docname);
+int32_t xmlCheckPassword(char *docname, char *password);
 
 #endif
