@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<user>
+   <masterpass>12345</masterpass>
+   <login>"0-logged off/ 1-logged in"</login>
+   <category>
+      <title>"facebook"</title>
+      <password>"password_for_facebook"</password>
+      <url>"url"</url>
+      <notes>"miscelanious"</notes>
+   </category>
+</user>
