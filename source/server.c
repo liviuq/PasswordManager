@@ -7,16 +7,20 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+
+#include "xmlfunctions.h"
 
 int main(int argc, char **argv)
 {
 	int32_t port = 60123;
 	int32_t exit_server = 0;   // condition for server shutdown
-	struct sockaddr_in server; // structura folosita de server
-	struct sockaddr_in from;
-	int32_t sd; // descriptorul de socket
+	struct sockaddr_in server; // struct used by the server
+	struct sockaddr_in from; //struct containing ip and port of client
+	int32_t sd; //socket descriptor which accepts connections 
 
-	/* crearea unui socket */
+	//socket creation
 	if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -27,33 +31,29 @@ int main(int argc, char **argv)
 	int32_t on = 1;
 	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-	/* pregatirea structurilor de date */
+	//setting the structs to 0
 	memset(&server, 0, sizeof(server));
 	memset(&from, 0, sizeof(from));
 
-	/* umplem structura folosita de server */
-	/* stabilirea familiei de socket-uri */
 	server.sin_family = AF_INET;
-	/* acceptam orice adresa */
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
-	/* utilizam un port utilizator */
 	server.sin_port = htons(port);
 
-	/* atasam socketul */
+	//binding the socket to the ip provided
 	if (bind(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
-	/* punem serverul sa asculte daca vin clienti sa se conecteze */
+	//listening to max 3 connections in queue
 	if (listen(sd, 3) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
-	/* servim in mod concurent clientii... */
+	//the main loop
 	while (!exit_server)
 	{
 		int client;
@@ -62,10 +62,9 @@ int main(int argc, char **argv)
 		printf("[SERVER] Listening on port %d\n", port);
 		fflush(stdout);
 
-		/* acceptam un client (stare blocanta pina la realizarea conexiunii) */
+		//waiting in here untill a client comes
 		client = accept(sd, (struct sockaddr *)&from, &length);
 
-		/* eroare la acceptarea conexiunii de la un client */
 		if (client == -1)
 		{
 			printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -99,9 +98,12 @@ int main(int argc, char **argv)
 
 					int32_t login = 0; // login = 0 -> client not logged in
 					// login = 1 -> client logged in
-					int32_t exit_client = 0;
-					char *username = NULL;
-					char *password = NULL;
+					int32_t exit_client = 0; //if exit_client == 1, close server
+					int32_t bytes_read, bytes_written;
+					(void)bytes_written; //not used for now
+
+					char *username = NULL; //holds the username
+					char *password = NULL; //holds the password
 
 					while (!exit_client)
 					{
@@ -109,7 +111,7 @@ int main(int argc, char **argv)
 						while (!login)
 						{
 							char *input_username = "Input a username: ";
-							int32_t input_username_length = strlen(input_username);
+							int input_username_length = strlen(input_username);
 
 							// writing length to client
 							if (write(client, &input_username_length, sizeof(input_username_length)) == -1)
@@ -126,11 +128,17 @@ int main(int argc, char **argv)
 							}
 
 							// reading client's response
-							int32_t username_length = 0;
-							if (read(client, &username_length, sizeof(username_length)) == -1)
+							int username_length = 0;
+							if ((bytes_read = read(client, &username_length, sizeof(username_length))) == -1)
 							{
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
+							}
+							else
+							if(bytes_read == 0)
+							{
+								printf("Goodbye client..\n");
+								return EXIT_SUCCESS;
 							}
 
 							// malloc the username
@@ -143,15 +151,14 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							username[strlen(username) - 1] = '\0';
+							username[username_length - 1] = '\0';
 
 							fflush(stdout);
-							printf("[SERVER] Username is %s\n", username);
+							printf("[SERVER] Username is %s", username);
 							fflush(stdout);
-
 							// the same procedure with the password
 							char *input_password = "Input a password: ";
-							int32_t input_password_length = strlen(input_password);
+							int input_password_length = strlen(input_password);
 
 							// writing length to client
 							if (write(client, &input_password_length, sizeof(input_password_length)) == -1)
@@ -168,11 +175,17 @@ int main(int argc, char **argv)
 							}
 
 							// reading client's response
-							int32_t password_length = 0;
-							if (read(client, &password_length, sizeof(password_length)) == -1)
+							int password_length = 0;
+							if ((bytes_read = read(client, &password_length, sizeof(password_length))) == -1)
 							{
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
+							}
+							else
+							if(bytes_read == 0)
+							{
+								printf("Goodbye client..\n");
+								return EXIT_SUCCESS;
 							}
 
 							// malloc the password
@@ -180,22 +193,22 @@ int main(int argc, char **argv)
 							memset(password, 0, password_length);
 
 							// reading the password
-							int32_t bytes_read = 0;
+							int bytes_read = 0;
 							if ((bytes_read = read(client, password, password_length)) == -1)
 							{
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							password[strlen(password) - 1] = '\0';
+							password[password_length - 1] = '\0';
 
 							fflush(stdout);
 							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
 
-							//if exists file user.xml, check password.
+							//if exists file hashed_user.xml, check password.
 							//if password is ok, login = 1;
 							//if password is not ok, relogin.
-							//if !exists user.xml, ask user if he wants to register
+							//if !exists hashed_user.xml, ask user if he wants to register
 							//if user register, create xml.
 							//if user not register, relogin.
 
@@ -205,7 +218,7 @@ int main(int argc, char **argv)
 							strcat(userxml, username);
 							strcat(userxml, ".xml");
 
-							int32_t register_bit = 0;
+							int register_bit = 0;
 							//check if it exists
 							if(access(userxml, F_OK) != 0) //file does not exist
 							{
@@ -222,17 +235,24 @@ int main(int argc, char **argv)
 							}
 							else //file exists => user exists
 							{
-								//open xml file
-								//if password is ok, login = 1, replace <login> with 1
-								//else continue
+								if(xmlCheckPassword(userxml, password))
+								{
+									login = 1;
+									//update login field
+									printf("logged in bro\n");
+								}
+								else continue;
 							}
+
+							free(username);
+							free(password);
 						}
 
 						//Logged in as user:pass
 						fflush(stdout);
 
 					}
-					/* am terminat cu acest client, inchidem conexiunea */
+
 					close(client);
 					exit(EXIT_SUCCESS);
 				}
