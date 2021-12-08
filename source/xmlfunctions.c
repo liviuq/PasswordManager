@@ -4,66 +4,63 @@ an idea as to how I am going to implement this.
 I am really tired.
 */
 #include <stdio.h>
+#include <stdint.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-void parseQuestion(xmlDocPtr doc, xmlNodePtr cur)
+int32_t xmlCheckPassword(char *docname, char *password)
 {
 
-	xmlChar *key;
-	cur = cur->xmlChildrenNode;
-	while (cur != NULL)
+	xmlDocPtr document; // pointer to the document
+	xmlNodePtr current; // node pointer ot interact with individual nodes
+
+	// opening the document
+	// checkikng to see if the document was successfully parsed
+	if ((document = xmlParseFile("user.xml")) == NULL)
 	{
-		if ((!xmlStrcmp(cur->name, (const xmlChar *)"title")))
+		printf("Error on parsing the doc\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// retrieve document's root element
+	// check to see if document actually has something in it
+	if ((current = xmlDocGetRootElement(document)) == NULL)
+	{
+		printf("Error on parsing the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
+
+	// check to see that we opened the right type of document
+	if (xmlStrcmp(current->name, (const xmlChar *)"user"))
+	{
+		printf("Error on the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
+
+	current = current->children;
+	while (current != NULL)
+	{
+		if ((!xmlStrcmp(current->name, (const xmlChar *)"masterpass")))
 		{
-			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-			printf("keyword: %s\n", key);
-			xmlFree(key);
+			xmlChar *key = xmlNodeListGetString(document, current->children, 1);
+			if (!xmlStrcmp(key, (xmlChar *)password))
+			{
+				xmlFree(key);
+				xmlFreeDoc(document);
+				return 1; // password is verified
+			}
+			else
+			{
+				xmlFree(key);
+				xmlFreeDoc(document);
+				return 0; // password is verified
+			}
 		}
-		cur = cur->next;
-	}
-}
-
-void parseDoc(char *docname)
-{
-
-	xmlDocPtr doc;
-	xmlNodePtr cur;
-
-	doc = xmlParseFile(docname);
-
-	if (doc == NULL)
-	{
-		fprintf(stderr, "Document not parsed successfully. \n");
-		return;
+		current = current->next;
 	}
 
-	cur = xmlDocGetRootElement(doc);
-
-	if (cur == NULL)
-	{
-		fprintf(stderr, "empty document\n");
-		xmlFreeDoc(doc);
-		return;
-	}
-
-	if (xmlStrcmp(cur->name, (const xmlChar *)"set"))
-	{
-		fprintf(stderr, "document of the wrong type, root node != set");
-		xmlFreeDoc(doc);
-		return;
-	}
-
-	cur = cur->xmlChildrenNode;
-	while (cur != NULL)
-	{
-		if ((!xmlStrcmp(cur->name, (const xmlChar *)"question")))
-		{
-			parseQuestion(doc, cur);
-		}
-
-		cur = cur->next;
-	}
-
-	xmlFreeDoc(doc);
+	//no masterpass
+	return 0;
 }
