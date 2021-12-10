@@ -16,7 +16,7 @@ int32_t xmlCheckPassword(char *docname, char *password)
 
 	// opening the document
 	// checkikng to see if the document was successfully parsed
-	if ((document = xmlParseFile("user.xml")) == NULL)
+	if ((document = xmlParseFile(docname)) == NULL)
 	{
 		printf("Error on parsing the doc\n");
 		exit(EXIT_FAILURE);
@@ -53,6 +53,9 @@ int32_t xmlCheckPassword(char *docname, char *password)
 			}
 			else
 			{
+				fflush(stdout);
+				printf("key:%s", key);
+				fflush(stdout);
 				xmlFree(key);
 				xmlFreeDoc(document);
 				return 0; // password is verified
