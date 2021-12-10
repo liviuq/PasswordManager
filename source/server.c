@@ -199,16 +199,16 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							password[password_length - 1] = '\0';
+							password[password_length - 1] = 0;
 
 							fflush(stdout);
 							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
 
-							//if exists file hashed_user.xml, check password.
+							//if exists file user.xml, check password.
 							//if password is ok, login = 1;
 							//if password is not ok, relogin.
-							//if !exists hashed_user.xml, ask user if he wants to register
+							//if !exists user.xml, ask user if he wants to register
 							//if user register, create xml.
 							//if user not register, relogin.
 
@@ -226,24 +226,41 @@ int main(int argc, char **argv)
 								if(register_bit == 1)
 								{
 									//create user.xml
+									xmlDocPtr new_document = NULL;
+									xmlNodePtr root_node = NULL, node = NULL;
+
+									//creating the document
+									new_document = xmlNewDoc(BAD_CAST "1.0");
+									root_node = xmlNewNode(NULL, BAD_CAST "user");
+									xmlDocSetRootElement(new_document, root_node);
+
+									//adding the child items, like password and login field
+									xmlNewChild(root_node, NULL, BAD_CAST "masterpass", BAD_CAST password);
 									//add <login> field with 1
-								}
-								else
-								{
-									continue;
+									xmlNewChild(root_node, NULL, BAD_CAST "login", BAD_CAST "1");
+
+									//saving the file to the memory
+									xmlSaveFormatFile(userxml, new_document, 1);
+									xmlFreeDoc(new_document);
+
+									xmlCleanupParser();
 								}
 							}
 							else //file exists => user exists
 							{
+								fflush(stdout);
+								printf("[SERVER] User exists:%s:%s.Check password..\n", username, password);
+								fflush(stdout);
+
 								if(xmlCheckPassword(userxml, password))
 								{
 									login = 1;
 									//update login field
 									printf("logged in bro\n");
 								}
-								else continue;
 							}
 
+							//freeing the memory
 							free(username);
 							free(password);
 						}
