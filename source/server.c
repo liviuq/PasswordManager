@@ -17,10 +17,10 @@ int main(int argc, char **argv)
 	int32_t port = 60123;
 	int32_t exit_server = 0;   // condition for server shutdown
 	struct sockaddr_in server; // struct used by the server
-	struct sockaddr_in from; //struct containing ip and port of client
-	int32_t sd; //socket descriptor which accepts connections 
+	struct sockaddr_in from;   // struct containing ip and port of client
+	int32_t sd;				   // socket descriptor which accepts connections
 
-	//socket creation
+	// socket creation
 	if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 	int32_t on = 1;
 	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-	//setting the structs to 0
+	// setting the structs to 0
 	memset(&server, 0, sizeof(server));
 	memset(&from, 0, sizeof(from));
 
@@ -39,21 +39,21 @@ int main(int argc, char **argv)
 	server.sin_addr.s_addr = htonl(INADDR_ANY);
 	server.sin_port = htons(port);
 
-	//binding the socket to the ip provided
+	// binding the socket to the ip provided
 	if (bind(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
-	//listening to max 3 connections in queue
+	// listening to max 3 connections in queue
 	if (listen(sd, 3) == -1)
 	{
 		printf("%s on line %d\n", strerror(errno), __LINE__);
 		exit(EXIT_FAILURE);
 	}
 
-	//the main loop
+	// the main loop
 	while (!exit_server)
 	{
 		int client;
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 		printf("[SERVER] Listening on port %d\n", port);
 		fflush(stdout);
 
-		//waiting in here untill a client comes
+		// waiting in here untill a client comes
 		client = accept(sd, (struct sockaddr *)&from, &length);
 
 		if (client == -1)
@@ -98,12 +98,12 @@ int main(int argc, char **argv)
 
 					int32_t login = 0; // login = 0 -> client not logged in
 					// login = 1 -> client logged in
-					int32_t exit_client = 0; //if exit_client == 1, close server
+					int32_t exit_client = 0; // if exit_client == 1, close server
 					int32_t bytes_read, bytes_written;
-					(void)bytes_written; //not used for now
+					(void)bytes_written; // not used for now
 
-					char *username = NULL; //holds the username
-					char *password = NULL; //holds the password
+					char *username = NULL; // holds the username
+					char *password = NULL; // holds the password
 
 					while (!exit_client)
 					{
@@ -134,8 +134,7 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							else
-							if(bytes_read == 0)
+							else if (bytes_read == 0)
 							{
 								printf("Goodbye client..\n");
 								return EXIT_SUCCESS;
@@ -181,8 +180,7 @@ int main(int argc, char **argv)
 								printf("%s on line %d\n", strerror(errno), __LINE__);
 								exit(EXIT_FAILURE);
 							}
-							else
-							if(bytes_read == 0)
+							else if (bytes_read == 0)
 							{
 								printf("Goodbye client..\n");
 								return EXIT_SUCCESS;
@@ -205,69 +203,54 @@ int main(int argc, char **argv)
 							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
 
-							//if exists file user.xml, check password.
-							//if password is ok, login = 1;
-							//if password is not ok, relogin.
-							//if !exists user.xml, ask user if he wants to register
-							//if user register, create xml.
-							//if user not register, relogin.
+							// if exists file user.xml, check password.
+							// if password is ok, login = 1;
+							// if password is not ok, relogin.
+							// if !exists user.xml, ask user if he wants to register
+							// if user register, create xml.
+							// if user not register, relogin.
 
-							//generate the name of the file to be opened
+							// generate the name of the file to be opened
 							char userxml[256];
 							memset(userxml, 0, 255);
 							strcat(userxml, username);
 							strcat(userxml, ".xml");
 
 							int register_bit = 0;
-							//check if it exists
-							if(access(userxml, F_OK) != 0) //file does not exist
+							// check if it exists
+							if (access(userxml, F_OK) != 0) // file does not exist
 							{
-								//ask user if he wants to register
-								if(register_bit == 1)
+								// ask user if he wants to register
+								if (register_bit == 1)
 								{
-									//create user.xml
-									xmlDocPtr new_document = NULL;
-									xmlNodePtr root_node = NULL, node = NULL;
+									//set login bit
+									login = 1;
 
-									//creating the document
-									new_document = xmlNewDoc(BAD_CAST "1.0");
-									root_node = xmlNewNode(NULL, BAD_CAST "user");
-									xmlDocSetRootElement(new_document, root_node);
-
-									//adding the child items, like password and login field
-									xmlNewChild(root_node, NULL, BAD_CAST "masterpass", BAD_CAST password);
-									//add <login> field with 1
-									xmlNewChild(root_node, NULL, BAD_CAST "login", BAD_CAST "1");
-
-									//saving the file to the memory
-									xmlSaveFormatFile(userxml, new_document, 1);
-									xmlFreeDoc(new_document);
-
-									xmlCleanupParser();
+									// create user.xml
+									xmlCreateUser(userxml, password);	
 								}
 							}
-							else //file exists => user exists
+							else // file exists => user exists
 							{
 								fflush(stdout);
 								printf("[SERVER] User exists:%s:%s.Check password..\n", username, password);
 								fflush(stdout);
 
-								if(xmlCheckPassword(userxml, password))
+								if (xmlCheckPassword(userxml, password))
 								{
+									//set logi n bit
 									login = 1;
+									
 									//update login field
-									printf("logged in bro\n");
+									xmlReplaceLoginField(userxml, login);
 								}
 							}
+						} //exit login loop
 
-							//freeing the memory
-							free(username);
-							free(password);
-						}
-
-						//Logged in as user:pass
+						// Logged in as user:pass
 						fflush(stdout);
-
+						printf("Logged in as %s:%s\n", username, password);
+						fflush(stdout);
 					}
 
 					close(client);
