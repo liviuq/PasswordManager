@@ -9,6 +9,7 @@
 #include <string.h>
 
 #define LOCAL_MESSAGE_LEN 256
+#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); }})
 
 int main(int argc, char *argv[])
 {
@@ -16,8 +17,8 @@ int main(int argc, char *argv[])
 	(void)bytes_written;
 	int32_t exit_client = 0;
 	int32_t port;
-	int32_t sd;				  //socket descriptor used to talk to the server 
-	struct sockaddr_in server; //struct for server ip, port, tcp option 
+	int32_t sd;				   // socket descriptor used to talk to the server
+	struct sockaddr_in server; // struct for server ip, port, tcp option
 
 	if (argc != 3)
 	{
@@ -25,38 +26,26 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	//setting the port
+	// setting the port
 	port = atoi(argv[2]);
 
-	//creating the socket
-	if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	{
-		printf("%s on line %d\n", strerror(errno), __LINE__);
-		exit(EXIT_FAILURE);
-	}
+	// creating the socket
+	FAIL_IF(sd = socket(AF_INET, SOCK_STREAM, 0));
 
-	//filling struct sockaddr with info
+	// filling struct sockaddr with info
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = inet_addr(argv[1]);
 	server.sin_port = htons(port);
 
-	//connecting to the server
-	if (connect(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
-	{
-		printf("%s on line %d\n", strerror(errno), __LINE__);
-		exit(EXIT_FAILURE);
-	}
-
+	// connecting to the server
+	FAIL_IF(connect(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)));
+		
 	while (!exit_client)
 	{
 		// reading the number of bytes from the server
 		int length_in = 0;
-		if ((bytes_read = read(sd, &length_in, sizeof(length_in))) == -1)
-		{
-			printf("%s on line %d\n", strerror(errno), __LINE__);
-			exit(EXIT_FAILURE);
-		}
-		else if (bytes_read == 0)
+		FAIL_IF(bytes_read = read(sd, &length_in, sizeof(length_in)));
+		if (bytes_read == 0)
 		{
 			printf("Goodbye server..\n");
 			return EXIT_SUCCESS;
@@ -66,11 +55,7 @@ int main(int argc, char *argv[])
 		char *incoming_message = malloc(sizeof(char) * length_in);
 		memset(incoming_message, 0, length_in);
 
-		if (read(sd, incoming_message, length_in) == -1)
-		{
-			printf("%s on line %d\n", strerror(errno), __LINE__);
-			exit(EXIT_FAILURE);
-		}
+		FAIL_IF(read(sd, incoming_message, length_in));
 
 		// displaying the message
 		printf("%s\n", incoming_message);
@@ -79,27 +64,15 @@ int main(int argc, char *argv[])
 		// reading the input from the user
 		char *message = malloc(sizeof(char) * LOCAL_MESSAGE_LEN);
 		memset(message, 0, LOCAL_MESSAGE_LEN);
-		if (read(STDIN_FILENO, message, LOCAL_MESSAGE_LEN) == -1)
-		{
-			printf("%s on line %d\n", strerror(errno), __LINE__);
-			exit(EXIT_FAILURE);
-		}
+		FAIL_IF(read(STDIN_FILENO, message, LOCAL_MESSAGE_LEN));
 		// message[strlen(message)] = '\0';
 
 		// writing to the server the response's length
 		int length_out = strlen(message);
-		if (write(sd, &length_out, sizeof(length_out)) == -1)
-		{
-			printf("%s on line %d\n", strerror(errno), __LINE__);
-			exit(EXIT_FAILURE);
-		}
+		FAIL_IF(write(sd, &length_out, sizeof(length_out)));
 
 		// writing to the server the whole response
-		if (write(sd, message, length_out) == -1)
-		{
-			printf("%s on line %d\n", strerror(errno), __LINE__);
-			exit(EXIT_FAILURE);
-		}
+		FAIL_IF(write(sd, message, length_out));
 
 		// freeing the memory
 		free(incoming_message);
