@@ -12,6 +12,8 @@
 
 #include "xmlfunctions.h"
 
+#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); }})
+
 int main(int argc, char **argv)
 {
 	int32_t port = 60123;
@@ -21,11 +23,7 @@ int main(int argc, char **argv)
 	int32_t sd;				   // socket descriptor which accepts connections
 
 	// socket creation
-	if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	{
-		printf("%s on line %d\n", strerror(errno), __LINE__);
-		exit(EXIT_FAILURE);
-	}
+	FAIL_IF((sd = socket(AF_INET, SOCK_STREAM, 0)));
 
 	// reusing the address and port
 	int32_t on = 1;
@@ -40,18 +38,10 @@ int main(int argc, char **argv)
 	server.sin_port = htons(port);
 
 	// binding the socket to the ip provided
-	if (bind(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
-	{
-		printf("%s on line %d\n", strerror(errno), __LINE__);
-		exit(EXIT_FAILURE);
-	}
+	FAIL_IF(bind(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)));
 
 	// listening to max 3 connections in queue
-	if (listen(sd, 3) == -1)
-	{
-		printf("%s on line %d\n", strerror(errno), __LINE__);
-		exit(EXIT_FAILURE);
-	}
+	FAIL_IF(listen(sd, 3));
 
 	// the main loop
 	while (!exit_server)
@@ -114,27 +104,15 @@ int main(int argc, char **argv)
 							int input_username_length = strlen(input_username);
 
 							// writing length to client
-							if (write(client, &input_username_length, sizeof(input_username_length)) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF(write(client, &input_username_length, sizeof(input_username_length)));
 
 							// write message
-							if (write(client, input_username, input_username_length) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF(write(client, input_username, input_username_length));
 
 							// reading client's response
 							int username_length = 0;
-							if ((bytes_read = read(client, &username_length, sizeof(username_length))) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
-							else if (bytes_read == 0)
+							FAIL_IF((bytes_read = read(client, &username_length, sizeof(username_length))));
+							if (bytes_read == 0)
 							{
 								printf("Goodbye client..\n");
 								return EXIT_SUCCESS;
@@ -145,42 +123,27 @@ int main(int argc, char **argv)
 							memset(username, 0, username_length);
 
 							// reading the username
-							if (read(client, username, username_length) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF(read(client, username, username_length));
 							username[username_length - 1] = '\0';
 
 							fflush(stdout);
 							printf("[SERVER] Username is %s", username);
 							fflush(stdout);
+
 							// the same procedure with the password
 							char *input_password = "Input a password: ";
 							int input_password_length = strlen(input_password);
 
 							// writing length to client
-							if (write(client, &input_password_length, sizeof(input_password_length)) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF(write(client, &input_password_length, sizeof(input_password_length)));
 
 							// write message
-							if (write(client, input_password, input_password_length) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF(write(client, input_password, input_password_length));
 
 							// reading client's response
 							int password_length = 0;
-							if ((bytes_read = read(client, &password_length, sizeof(password_length))) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
-							else if (bytes_read == 0)
+							FAIL_IF((bytes_read = read(client, &password_length, sizeof(password_length))));
+							if (bytes_read == 0)
 							{
 								printf("Goodbye client..\n");
 								return EXIT_SUCCESS;
@@ -192,23 +155,12 @@ int main(int argc, char **argv)
 
 							// reading the password
 							int bytes_read = 0;
-							if ((bytes_read = read(client, password, password_length)) == -1)
-							{
-								printf("%s on line %d\n", strerror(errno), __LINE__);
-								exit(EXIT_FAILURE);
-							}
+							FAIL_IF((bytes_read = read(client, password, password_length)));
 							password[password_length - 1] = 0;
 
 							fflush(stdout);
 							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
 							fflush(stdout);
-
-							// if exists file user.xml, check password.
-							// if password is ok, login = 1;
-							// if password is not ok, relogin.
-							// if !exists user.xml, ask user if he wants to register
-							// if user register, create xml.
-							// if user not register, relogin.
 
 							// generate the name of the file to be opened
 							char userxml[256];
@@ -221,6 +173,20 @@ int main(int argc, char **argv)
 							if (access(userxml, F_OK) != 0) // file does not exist
 							{
 								// ask user if he wants to register
+								char *register_question = "Do you want to register? Enter 1 for yes, 0 for no.\n";
+								int register_question_length = strlen(register_question);
+
+								FAIL_IF(write(client, &register_question_length, sizeof(register_question_length)));
+								FAIL_IF(write(client, register_question, register_question_length));
+
+								int reply_length;
+								char reply;
+								FAIL_IF(read(client, &reply_length, sizeof(reply_length)));
+								FAIL_IF(read(client, &reply, reply_length));
+
+								if(reply == 49)
+									register_bit = 1;
+
 								if (register_bit == 1)
 								{
 									//set login bit
@@ -251,14 +217,14 @@ int main(int argc, char **argv)
 						fflush(stdout);
 						printf("Logged in as %s:%s\n", username, password);
 						fflush(stdout);
-					}
+					} //client loop
 
 					close(client);
 					exit(EXIT_SUCCESS);
-				}
-			}
-		}
-	}
+				} //child
+			} //after fork returns
+		} //after accept returns
+	} //while(!exit_client)
 
 	return EXIT_SUCCESS;
 }
