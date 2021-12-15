@@ -54,7 +54,7 @@ int32_t xmlCheckPassword(char *docname, char *password)
 			else
 			{
 				fflush(stdout);
-				printf("key:%s", key);
+				//printf("key:%s", key);
 				fflush(stdout);
 				xmlFree(key);
 				xmlFreeDoc(document);
@@ -145,6 +145,34 @@ void xmlCreateUser(const char* name, const char* password)
 	xmlFreeDoc(new_document);
 
 	xmlCleanupParser();
+}
+
+void xmlOpenUserFile(char *docname, xmlDocPtr document, xmlNodePtr current)
+{
+// opening the document
+	// checkikng to see if the document was successfully parsed
+	if ((document = xmlParseFile(docname)) == NULL)
+	{
+		printf("Error on parsing the doc\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// retrieve document's root element
+	// check to see if document actually has something in it
+	if ((current = xmlDocGetRootElement(document)) == NULL)
+	{
+		printf("Error on parsing the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
+
+	// check to see that we opened the right type of document
+	if (xmlStrcmp(current->name, (const xmlChar *)"user"))
+	{
+		printf("Error on the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
 }
 
 void xmlReplaceLoginField(char *docname, int32_t loginVal)
