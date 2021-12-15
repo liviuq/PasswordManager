@@ -12,7 +12,32 @@
 
 #include "xmlfunctions.h"
 
-#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); }})
+//colors
+#define BLACK "\033[30m"
+#define BLACK_BG "\033[40m"
+#define RED "\033[31m"
+#define RED_BG "\033[41m"
+#define ORANGE "\033[33m"
+#define ORANGE_BG "\033[43m"
+#define BLUE "\033[34m"
+#define BLUE_BG "\033[44m"
+#define MAGENTA "\033[35m"
+#define MAGENTA_BG "\033[45m"
+#define GREEN "\033[32m"
+#define GREEN_BG "\033[42m"
+#define DEFAULT "\033[39m"
+#define DEFAULT_BG "\033[49m"
+#define DEF DEFAULT DEFAULT_BG
+
+//options
+#define ADD_CATEGORY 49
+#define GET_CATEGORY 50
+#define GET_CATEGORY_BY_TITLE 51
+#define RM_CATEGORY 52
+#define MODIFY_CATEGORY 53
+
+//error checking
+#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); } })
 
 int main(int argc, char **argv)
 {
@@ -83,7 +108,7 @@ int main(int argc, char **argv)
 					// because we no longer need it
 					close(sd);
 
-					printf("[SERVER] Connection established.\n");
+					printf(GREEN"[SERVER] Connection established.\n"DEF);
 					fflush(stdout);
 
 					int32_t login = 0; // login = 0 -> client not logged in
@@ -92,15 +117,16 @@ int main(int argc, char **argv)
 					int32_t bytes_read, bytes_written;
 					(void)bytes_written; // not used for now
 
-					char *username = NULL; // holds the username
-					char *password = NULL; // holds the password
+					char *username = NULL;						// holds the username
+					char *password = NULL;						// holds the password
+					char *userxml = malloc(sizeof(char) * 256); // filename of user
 
 					while (!exit_client)
 					{
 						// enter a loop while the user logins
 						while (!login)
 						{
-							char *input_username = "Input a username: ";
+							char *input_username = ORANGE"Input a username: "DEF;
 							int input_username_length = strlen(input_username);
 
 							// writing length to client
@@ -126,12 +152,8 @@ int main(int argc, char **argv)
 							FAIL_IF(read(client, username, username_length));
 							username[username_length - 1] = '\0';
 
-							fflush(stdout);
-							printf("[SERVER] Username is %s", username);
-							fflush(stdout);
-
 							// the same procedure with the password
-							char *input_password = "Input a password: ";
+							char *input_password = ORANGE"Input a password: "DEF;
 							int input_password_length = strlen(input_password);
 
 							// writing length to client
@@ -158,12 +180,7 @@ int main(int argc, char **argv)
 							FAIL_IF((bytes_read = read(client, password, password_length)));
 							password[password_length - 1] = 0;
 
-							fflush(stdout);
-							printf("[SERVER] Password is %s, bytes in: %d\n", password, bytes_read);
-							fflush(stdout);
-
 							// generate the name of the file to be opened
-							char userxml[256];
 							memset(userxml, 0, 255);
 							strcat(userxml, username);
 							strcat(userxml, ".xml");
@@ -173,7 +190,7 @@ int main(int argc, char **argv)
 							if (access(userxml, F_OK) != 0) // file does not exist
 							{
 								// ask user if he wants to register
-								char *register_question = "Do you want to register? Enter 1 for yes, 0 for no.\n";
+								char *register_question = BLUE"Do you want to register? Enter 1 for yes, 0 for no: "DEF;
 								int register_question_length = strlen(register_question);
 
 								FAIL_IF(write(client, &register_question_length, sizeof(register_question_length)));
@@ -184,47 +201,96 @@ int main(int argc, char **argv)
 								FAIL_IF(read(client, &reply_length, sizeof(reply_length)));
 								FAIL_IF(read(client, &reply, reply_length));
 
-								if(reply == 49)
+								if (reply == 49)
 									register_bit = 1;
 
 								if (register_bit == 1)
 								{
-									//set login bit
+									// set login bit
 									login = 1;
 
 									// create user.xml
-									xmlCreateUser(userxml, password);	
+									xmlCreateUser(userxml, password);
 								}
 							}
 							else // file exists => user exists
 							{
 								fflush(stdout);
-								printf("[SERVER] User exists:%s:%s.Check password..\n", username, password);
+								printf(BLUE"[SERVER] User %s exists.Checking password..\n"DEF, username);
 								fflush(stdout);
 
 								if (xmlCheckPassword(userxml, password))
 								{
-									//set logi n bit
+									// set logi n bit
 									login = 1;
-									
-									//update login field
+
+									// update login field
 									xmlReplaceLoginField(userxml, login);
 								}
 							}
-						} //exit login loop
+						} // exit login loop
 
 						// Logged in as user:pass
 						fflush(stdout);
-						printf("Logged in as %s:%s\n", username, password);
+						printf(GREEN"[SERVER] Logged in as %s\n"DEF, username);
 						fflush(stdout);
-					} //client loop
 
+						// opening the file containing the data about user's passwords
+						xmlDocPtr document = NULL; // pointer to the document
+						xmlNodePtr current = NULL; // node pointer ot interact with individual nodes
+						xmlOpenUserFile(userxml, document, current);
+
+						// choice for the answer from client
+						char choice;
+						int32_t choice_length;
+						// Let the user know he's logged in and add options to choose from
+						const char *options = 	       GREEN "Here are your "
+													   "options for the password manager:\n"
+													   "1) Add category\n2) Get categories\n"
+													   "3) Get category by title\n4) Remove category\n"
+													   "5) Modify data in category\n Choice: "DEF;
+						int32_t options_length = strlen(options);
+
+						int32_t input_is_ok = 0;
+						while (!input_is_ok)
+						{
+							FAIL_IF(write(client, &options_length, sizeof(options_length)));
+							FAIL_IF(write(client, options, options_length));
+
+							// read the choice
+							// Verify that you read at most 2 bytes so the input is valid
+							// otherwise, loop untill you get the correct input
+							FAIL_IF(read(client, &choice_length, sizeof(choice_length)));
+							FAIL_IF(bytes_read = read(client, &choice, choice_length));
+							if (bytes_read == 2 && choice >= 49 && choice <= 53)
+								input_is_ok = 1;
+						}
+
+						fflush(stdout);
+						printf("[SERVER] Choice is %d\n", choice);
+						fflush(stdout);
+
+						//switch based on choice
+						switch(choice)
+						{
+							case ADD_CATEGORY:
+								
+						}
+						// Add categories
+						// Remove categories
+						// Modify data in categories
+						// Send information about category
+					} // client loop
+
+					// logging out
+					login = 0;
+					xmlReplaceLoginField(userxml, login);
 					close(client);
 					exit(EXIT_SUCCESS);
-				} //child
-			} //after fork returns
-		} //after accept returns
-	} //while(!exit_client)
+				} // child
+			}	  // after fork returns
+		}		  // after accept returns
+	}			  // while(!exit_client)
 
 	return EXIT_SUCCESS;
 }
