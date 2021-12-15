@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 		FAIL_IF(read(sd, incoming_message, length_in));
 
 		// displaying the message
-		printf("%s\n", incoming_message);
+		printf("%s", incoming_message);
 		fflush(stdout);
 
 		// reading the input from the user
