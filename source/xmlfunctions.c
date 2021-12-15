@@ -1,12 +1,17 @@
 /*
-This is quizzgame, the server. I might have
+This is password manager, the server. I might have
 an idea as to how I am going to implement this.
 I am really tired.
 */
 #include <stdio.h>
+#include <unistd.h>
 #include <stdint.h>
+#include <string.h>
+#include <errno.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+
+#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); } })
 
 int32_t xmlCheckPassword(char *docname, char *password)
 {
@@ -54,11 +59,11 @@ int32_t xmlCheckPassword(char *docname, char *password)
 			else
 			{
 				fflush(stdout);
-				//printf("key:%s", key);
+				// printf("key:%s", key);
 				fflush(stdout);
 				xmlFree(key);
 				xmlFreeDoc(document);
-				return 0; // password is verified
+				return 0; // password is verified, but it does not match
 			}
 		}
 		current = current->next;
@@ -125,7 +130,7 @@ int32_t xmlCheckLogin(char *docname)
 	return 0; // control should not be reaching here.
 }
 
-void xmlCreateUser(const char* name, const char* password)
+void xmlCreateUser(const char *name, const char *password)
 {
 	xmlDocPtr new_document = NULL;
 	xmlNodePtr root_node = NULL;
@@ -141,6 +146,7 @@ void xmlCreateUser(const char* name, const char* password)
 	xmlNewChild(root_node, NULL, BAD_CAST "login", BAD_CAST "1");
 
 	// saving the file to the memory
+	xmlKeepBlanksDefault(0);
 	xmlSaveFormatFile(name, new_document, 1);
 	xmlFreeDoc(new_document);
 
@@ -149,7 +155,7 @@ void xmlCreateUser(const char* name, const char* password)
 
 void xmlOpenUserFile(char *docname, xmlDocPtr document, xmlNodePtr current)
 {
-// opening the document
+	// opening the document
 	// checkikng to see if the document was successfully parsed
 	if ((document = xmlParseFile(docname)) == NULL)
 	{
@@ -212,8 +218,120 @@ void xmlReplaceLoginField(char *docname, int32_t loginVal)
 		if ((!xmlStrcmp(current->name, (const xmlChar *)"login")))
 		{
 			xmlNodeSetContent(current, loginVal == 1 ? BAD_CAST "1" : BAD_CAST "0");
+			xmlSaveFormatFile(docname, document, 1);
 			xmlFreeDoc(document);
 		}
 		current = current->next;
 	}
+}
+
+void xmlAddCategory(int32_t fd, char *user_file)
+{
+	//"Input category"
+	const char *input_category = "Input a category title:\n";
+	int32_t input_category_length = strlen(input_category);
+	FAIL_IF(write(fd, &input_category_length, sizeof(input_category_length)));
+	FAIL_IF(write(fd, input_category, input_category_length));
+
+	// reading the catefory title
+	int32_t incoming_length;
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char title[incoming_length];
+	FAIL_IF(read(fd, title, incoming_length));
+	title[incoming_length - 1] = 0;
+
+	const char *input_password = "Input a password: \n";
+	int32_t input_password_length = strlen(input_password);
+	FAIL_IF(write(fd, &input_password_length, sizeof(input_password_length)));
+	FAIL_IF(write(fd, input_password, input_password_length));
+
+	// reading the password
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char category_password[incoming_length];
+	FAIL_IF(read(fd, category_password, incoming_length));
+	category_password[incoming_length - 1] = 0;
+
+	const char *input_url = "Input an url: \n";
+	int32_t input_url_length = strlen(input_url);
+	FAIL_IF(write(fd, &input_url_length, sizeof(input_url_length)));
+	FAIL_IF(write(fd, input_url, input_url_length));
+
+	// reading the url
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char url[incoming_length];
+	FAIL_IF(read(fd, url, incoming_length));
+	url[incoming_length - 1] = 0;
+
+	const char *input_notes = "Input some information about it: \n";
+	int32_t input_notes_length = strlen(input_notes);
+	FAIL_IF(write(fd, &input_notes_length, sizeof(input_notes_length)));
+	FAIL_IF(write(fd, input_notes, input_notes_length));
+
+	// reading the notes 
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char notes[incoming_length];
+	FAIL_IF(read(fd, notes, incoming_length));
+	notes[incoming_length - 1] = 0;
+
+	// if (!xmlExistsTitle(user_file, title))
+	if (1)
+	{
+		xmlDocPtr document; // pointer to the document
+		xmlNodePtr root;	// node pointer ot interact with individual nodes
+
+		// opening the document
+		// checkikng to see if the document was successfully parsed
+		if ((document = xmlParseFile(user_file)) == NULL)
+		{
+			printf("Error on parsing the doc\n");
+			exit(EXIT_FAILURE);
+		}
+
+		// retrieve document's root element
+		// check to see if document actually has something in it
+		if ((root = xmlDocGetRootElement(document)) == NULL)
+		{
+			printf("Error on parsing the doc\n");
+			xmlFreeDoc(document);
+			exit(EXIT_FAILURE);
+		}
+
+		// check to see that we opened the right type of document
+		if (xmlStrcmp(root->name, (const xmlChar *)"user"))
+		{
+			printf("Error on the doc\n");
+			xmlFreeDoc(document);
+			exit(EXIT_FAILURE);
+		}
+
+		// adding the category
+		xmlNodePtr category_ptr = xmlNewChild(root, NULL, BAD_CAST "category", NULL);
+		xmlNewChild(category_ptr, NULL, BAD_CAST "title", BAD_CAST title);
+		xmlNewChild(category_ptr,NULL, BAD_CAST "password", BAD_CAST category_password );
+		xmlNewChild(category_ptr,NULL, BAD_CAST "url", BAD_CAST url);
+		xmlNewChild(category_ptr,NULL, BAD_CAST "notes", BAD_CAST notes);
+		// saving the file to the memory
+		xmlKeepBlanksDefault(0);
+		xmlSaveFormatFile(user_file, document, 1);
+		xmlFreeDoc(document);
+
+		// freeing whatever memory the parser used
+		xmlCleanupParser();
+	}
+}
+
+void xmlRemoveCategory(int32_t fd, char *user_file)
+{
+}
+
+void xmlModifyCategory(int32_t fd, char *user_file)
+{
+}
+
+void xmlGetCategory(int32_t fd, char *user_file)
+{
+}
+
+void xmlGetCategoryByTitle(int32_t fd, char *user_file)
+{
 }
