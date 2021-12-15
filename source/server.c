@@ -12,7 +12,7 @@
 
 #include "xmlfunctions.h"
 
-//colors
+// colors
 #define BLACK "\033[30m"
 #define BLACK_BG "\033[40m"
 #define RED "\033[31m"
@@ -29,14 +29,15 @@
 #define DEFAULT_BG "\033[49m"
 #define DEF DEFAULT DEFAULT_BG
 
-//options
+// options
 #define ADD_CATEGORY 49
 #define GET_CATEGORY 50
 #define GET_CATEGORY_BY_TITLE 51
 #define RM_CATEGORY 52
 #define MODIFY_CATEGORY 53
+#define EXIT 54
 
-//error checking
+// error checking
 #define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); } })
 
 int main(int argc, char **argv)
@@ -108,7 +109,7 @@ int main(int argc, char **argv)
 					// because we no longer need it
 					close(sd);
 
-					printf(GREEN"[SERVER] Connection established.\n"DEF);
+					printf(GREEN "[SERVER] Connection established.\n" DEF);
 					fflush(stdout);
 
 					int32_t login = 0; // login = 0 -> client not logged in
@@ -126,7 +127,7 @@ int main(int argc, char **argv)
 						// enter a loop while the user logins
 						while (!login)
 						{
-							char *input_username = ORANGE"Input a username: "DEF;
+							char *input_username = "Input a username: ";
 							int input_username_length = strlen(input_username);
 
 							// writing length to client
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
 							username[username_length - 1] = '\0';
 
 							// the same procedure with the password
-							char *input_password = ORANGE"Input a password: "DEF;
+							char *input_password = "Input a password: ";
 							int input_password_length = strlen(input_password);
 
 							// writing length to client
@@ -190,7 +191,7 @@ int main(int argc, char **argv)
 							if (access(userxml, F_OK) != 0) // file does not exist
 							{
 								// ask user if he wants to register
-								char *register_question = BLUE"Do you want to register? Enter 1 for yes, 0 for no: "DEF;
+								char *register_question = "Do you want to register? Enter 1 for yes, 0 for no: ";
 								int register_question_length = strlen(register_question);
 
 								FAIL_IF(write(client, &register_question_length, sizeof(register_question_length)));
@@ -216,39 +217,39 @@ int main(int argc, char **argv)
 							else // file exists => user exists
 							{
 								fflush(stdout);
-								printf(BLUE"[SERVER] User %s exists.Checking password..\n"DEF, username);
+								printf(BLUE "[SERVER] User %s exists.Checking password..\n" DEF, username);
 								fflush(stdout);
 
-								if (xmlCheckPassword(userxml, password))
+								// check to see if the user is already logged in
+								if (!xmlCheckLogin(userxml))
 								{
-									// set logi n bit
-									login = 1;
+									if (xmlCheckPassword(userxml, password))
+									{
+										// set logi n bit
+										login = 1;
 
-									// update login field
-									xmlReplaceLoginField(userxml, login);
+										// update login field
+										xmlReplaceLoginField(userxml, login);
+
+										// Logged in as user:pass
+										fflush(stdout);
+										printf(GREEN "[SERVER] Logged in as %s\n" DEF, username);
+										fflush(stdout);
+									}
 								}
 							}
 						} // exit login loop
-
-						// Logged in as user:pass
-						fflush(stdout);
-						printf(GREEN"[SERVER] Logged in as %s\n"DEF, username);
-						fflush(stdout);
-
-						// opening the file containing the data about user's passwords
-						xmlDocPtr document = NULL; // pointer to the document
-						xmlNodePtr current = NULL; // node pointer ot interact with individual nodes
-						xmlOpenUserFile(userxml, document, current);
 
 						// choice for the answer from client
 						char choice;
 						int32_t choice_length;
 						// Let the user know he's logged in and add options to choose from
-						const char *options = 	       GREEN "Here are your "
-													   "options for the password manager:\n"
-													   "1) Add category\n2) Get categories\n"
-													   "3) Get category by title\n4) Remove category\n"
-													   "5) Modify data in category\n Choice: "DEF;
+						char *options = "Here are your "
+										"options for the password manager:\n"
+										"1) Add category\n2) Get categories\n"
+										"3) Get category by title\n4) Remove category\n"
+										"5) Modify data in category\n"
+										"6) Exit\nChoice:";
 						int32_t options_length = strlen(options);
 
 						int32_t input_is_ok = 0;
@@ -260,32 +261,56 @@ int main(int argc, char **argv)
 							// read the choice
 							// Verify that you read at most 2 bytes so the input is valid
 							// otherwise, loop untill you get the correct input
-							FAIL_IF(read(client, &choice_length, sizeof(choice_length)));
-							FAIL_IF(bytes_read = read(client, &choice, choice_length));
-							if (bytes_read == 2 && choice >= 49 && choice <= 53)
-								input_is_ok = 1;
+							FAIL_IF(bytes_read = read(client, &choice_length, sizeof(choice_length)));
+							printf("[SERVER] Choice len = %d\n", choice_length);
+							if (choice_length > 2) // answer too big to fit in one byte, so we consume the rest
+							{
+								char temp[512];
+								FAIL_IF(read(client, temp, 512));
+							}
+							else
+							{
+								FAIL_IF(bytes_read = read(client, &choice, choice_length));
+								if (bytes_read == 2 && choice >= 49 && choice <= 54)
+									input_is_ok = 1;
+							}
 						}
 
 						fflush(stdout);
 						printf("[SERVER] Choice is %d\n", choice);
 						fflush(stdout);
 
-						//switch based on choice
-						switch(choice)
+						// switch based on choice
+						switch (choice)
 						{
-							case ADD_CATEGORY:
-								
+						case ADD_CATEGORY:
+							xmlAddCategory(client, userxml);
+							break;
+						case RM_CATEGORY:
+							xmlRemoveCategory(client, userxml);
+							break;
+						case MODIFY_CATEGORY:
+							xmlModifyCategory(client, userxml);
+							break;
+						case GET_CATEGORY:
+							xmlGetCategory(client, userxml);
+							break;
+						case GET_CATEGORY_BY_TITLE:
+							xmlGetCategoryByTitle(client, userxml);
+							break;
+						case EXIT:
+							exit_client = 1;
 						}
-						// Add categories
-						// Remove categories
-						// Modify data in categories
-						// Send information about category
 					} // client loop
 
 					// logging out
 					login = 0;
 					xmlReplaceLoginField(userxml, login);
+
 					close(client);
+					free(username);
+					free(password);
+					free(userxml);
 					exit(EXIT_SUCCESS);
 				} // child
 			}	  // after fork returns
