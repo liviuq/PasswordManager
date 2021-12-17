@@ -38,7 +38,14 @@
 #define EXIT 54
 
 // error checking
-#define FAIL_IF(EXP) ({ if((EXP) == -1) { printf("%s on line %d\n", strerror(errno), __LINE__); exit(EXIT_FAILURE); } })
+#define FAIL_IF(EXP) (                                            \
+	{                                                             \
+		if ((EXP) == -1)                                          \
+		{                                                         \
+			printf("%s on line %d\n", strerror(errno), __LINE__); \
+			exit(EXIT_FAILURE);                                   \
+		}                                                         \
+	})
 
 int main(int argc, char **argv)
 {
@@ -262,11 +269,10 @@ int main(int argc, char **argv)
 							// Verify that you read at most 2 bytes so the input is valid
 							// otherwise, loop untill you get the correct input
 							FAIL_IF(bytes_read = read(client, &choice_length, sizeof(choice_length)));
-							printf("[SERVER] Choice len = %d\n", choice_length);
 							if (choice_length > 2) // answer too big to fit in one byte, so we consume the rest
 							{
-								char temp[512];
-								FAIL_IF(read(client, temp, 512));
+								char temp[1024];
+								FAIL_IF(read(client, temp, 1024));
 							}
 							else
 							{
@@ -276,18 +282,14 @@ int main(int argc, char **argv)
 							}
 						}
 
-						fflush(stdout);
-						printf("[SERVER] Choice is %d\n", choice);
-						fflush(stdout);
-
 						// switch based on choice
 						switch (choice)
 						{
 						case ADD_CATEGORY:
-							xmlAddCategory(client, userxml);
+							xmlAddCategory(client, userxml); //done
 							break;
 						case RM_CATEGORY:
-							xmlRemoveCategory(client, userxml);
+							xmlRemoveCategory(client, userxml); //removes the category that has the title as the user entered 
 							break;
 						case MODIFY_CATEGORY:
 							xmlModifyCategory(client, userxml);
