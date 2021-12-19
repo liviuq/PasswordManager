@@ -19,6 +19,10 @@ I am really tired.
 			exit(EXIT_FAILURE);                                   \
 		}                                                         \
 	})
+#define TITLE 49
+#define PASSWORD 50
+#define URL 51
+#define INFORMATION 52
 
 int32_t xmlCheckPassword(char *docname, char *password)
 {
@@ -227,6 +231,7 @@ void xmlReplaceLoginField(char *docname, int32_t loginVal)
 			xmlNodeSetContent(current, loginVal == 1 ? BAD_CAST "1" : BAD_CAST "0");
 			xmlSaveFormatFile(docname, document, 1);
 			xmlFreeDoc(document);
+			return;
 		}
 		current = current->next;
 	}
@@ -262,19 +267,19 @@ int32_t xmlExistsTitle(char *user_file, char *title)
 		exit(EXIT_FAILURE);
 	}
 
-	//searching for a <category> field in order to find title
+	// searching for a <category> field in order to find title
 	xmlNodePtr current = root->children;
 	while (current != NULL)
 	{
-		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) //we found a category label, iterating to check for <title> category
+		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) // we found a category label, iterating to check for <title> category
 		{
 			xmlNodePtr category = current->children;
 			while (category != NULL)
 			{
-				if (!xmlStrcmp(category->name, BAD_CAST "title")) //we found the title label, check for actual content
+				if (!xmlStrcmp(category->name, BAD_CAST "title")) // we found the title label, check for actual content
 				{
 					xmlChar *key = xmlNodeListGetString(document, category->children, 1);
-					if (!xmlStrcmp(key, BAD_CAST title)) //there is already a category with the same title
+					if (!xmlStrcmp(key, BAD_CAST title)) // there is already a category with the same title
 					{
 						xmlFree(key);
 						xmlFreeDoc(document);
@@ -287,7 +292,7 @@ int32_t xmlExistsTitle(char *user_file, char *title)
 		current = current->next;
 	}
 
-	//we did not find a category with title, return 0
+	// we did not find a category with title, return 0
 	return 0;
 }
 
@@ -318,7 +323,7 @@ void xmlAddCategory(int32_t fd, char *user_file)
 	FAIL_IF(read(fd, category_password, incoming_length));
 	category_password[incoming_length - 1] = 0;
 
-	//Input url
+	// Input url
 	const char *input_url = "Input an url: \n";
 	int32_t input_url_length = strlen(input_url);
 	FAIL_IF(write(fd, &input_url_length, sizeof(input_url_length)));
@@ -330,7 +335,7 @@ void xmlAddCategory(int32_t fd, char *user_file)
 	FAIL_IF(read(fd, url, incoming_length));
 	url[incoming_length - 1] = 0;
 
-	//Input notes
+	// Input notes
 	const char *input_notes = "Input some information about it: \n";
 	int32_t input_notes_length = strlen(input_notes);
 	FAIL_IF(write(fd, &input_notes_length, sizeof(input_notes_length)));
@@ -403,7 +408,7 @@ void xmlRemoveCategory(int32_t fd, char *user_file)
 	FAIL_IF(read(fd, title, incoming_length));
 	title[incoming_length - 1] = 0;
 
-	//finding the category with "title"
+	// finding the category with "title"
 	xmlDocPtr document = NULL; // pointer to the document
 	xmlNodePtr root = NULL;	   // node pointer ot interact with individual nodes
 
@@ -432,23 +437,23 @@ void xmlRemoveCategory(int32_t fd, char *user_file)
 		exit(EXIT_FAILURE);
 	}
 
-	//searching for a <category> field in order to find title
+	// searching for a <category> field in order to find title
 	xmlNodePtr current = root->children;
 	while (current != NULL)
 	{
-		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) //we found a category label, iterating to check for <title> category
+		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) // we found a category label, iterating to check for <title> category
 		{
 			xmlNodePtr category = current->children;
 			while (category != NULL)
 			{
-				if (!xmlStrcmp(category->name, BAD_CAST "title")) //we found the title label, check for actual content
+				if (!xmlStrcmp(category->name, BAD_CAST "title")) // we found the title label, check for actual content
 				{
 					xmlChar *key = xmlNodeListGetString(document, category->children, 1);
-					if (!xmlStrcmp(key, BAD_CAST title)) //we found the category with this title, unlink it, save format
+					if (!xmlStrcmp(key, BAD_CAST title)) // we found the category with this title, unlink it, save format
 					{
 						xmlFree(key);
 						xmlUnlinkNode(current);
-						xmlKeepBlanksDefault(0); //for formatting purposes
+						xmlKeepBlanksDefault(0); // for formatting purposes
 						xmlSaveFormatFile(user_file, document, 1);
 
 						// freeing whatever memory the parser used
@@ -467,12 +472,160 @@ void xmlRemoveCategory(int32_t fd, char *user_file)
 
 void xmlModifyCategory(int32_t fd, char *user_file)
 {
+	//"Input category title to modify
+	const char *input_title = "Input the category title to apply modifications:\n";
+	int32_t input_title_length = strlen(input_title);
+	FAIL_IF(write(fd, &input_title_length, sizeof(input_title_length)));
+	FAIL_IF(write(fd, input_title, input_title_length));
+
+	// reading the catefory title
+	int32_t incoming_length;
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char title[incoming_length];
+	FAIL_IF(read(fd, title, incoming_length));
+	title[incoming_length - 1] = 0;
+
+	// finding the category with "title"
+	xmlDocPtr document = NULL; // pointer to the document
+	xmlNodePtr root = NULL;	   // node pointer ot interact with individual nodes
+
+	// opening the document
+	// checkikng to see if the document was successfully parsed
+	if ((document = xmlParseFile(user_file)) == NULL)
+	{
+		printf("Error on parsing the doc\n");
+		exit(EXIT_FAILURE);
+	}
+
+	// retrieve document's root element
+	// check to see if document actually has something in it
+	if ((root = xmlDocGetRootElement(document)) == NULL)
+	{
+		printf("Error on parsing the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
+
+	// check to see that we opened the right type of document
+	if (xmlStrcmp(root->name, (const xmlChar *)"user"))
+	{
+		printf("Error on the doc\n");
+		xmlFreeDoc(document);
+		exit(EXIT_FAILURE);
+	}
+
+	// searching for a <category> field in order to find title
+	xmlNodePtr current = root->children;
+	while (current != NULL)
+	{
+		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) // we found a category label, iterating to check for <title> category
+		{
+			xmlNodePtr category = current->children;
+			xmlNodePtr category_modifyer = category;
+			while (category != NULL)
+			{
+				if (!xmlStrcmp(category->name, BAD_CAST "title")) // we found the title label, check for actual content
+				{
+					xmlChar *key = xmlNodeListGetString(document, category->children, 1);
+					if (!xmlStrcmp(key, BAD_CAST title)) // we found the category with this title, ask what to modify
+					{
+						xmlFree(key);
+
+						// choice for the answer from client
+						int32_t bytes_read;
+						char choice;
+						int32_t choice_length;
+
+						const char *modifiers = "Here are your options to modify:\n"
+												"1) Title\n"
+												"2) Password\n"
+												"3) URL\n"
+												"4) Informations\n. Choice:";
+						int32_t modifiers_length = strlen(modifiers);
+
+						int32_t input_is_ok = 0;
+						while (!input_is_ok)
+						{
+							FAIL_IF(write(fd, &modifiers_length, sizeof(modifiers_length)));
+							FAIL_IF(write(fd, modifiers, modifiers_length));
+
+							// read the choice
+							// Verify that you read at most 2 bytes so the input is valid
+							// otherwise, loop untill you get the correct input
+							FAIL_IF(bytes_read = read(fd, &choice_length, sizeof(choice_length)));
+							if (choice_length > 2) // answer too big to fit in one byte, so we consume the rest
+							{
+								char temp[1024];
+								FAIL_IF(read(fd, temp, 1024));
+							}
+							else
+							{
+								FAIL_IF(bytes_read = read(fd, &choice, choice_length));
+								if (bytes_read == 2 && choice >= 49 && choice <= 53)
+									input_is_ok = 1;
+							}
+						}
+
+						// category_modifier is now your pointer to modify specific attributes
+						switch (choice)
+						{
+						case TITLE:
+						{
+							const char *new_title = "Input a new title:\n";
+							int32_t new_title_length = strlen(new_title);
+							FAIL_IF(write(fd, &new_title_length, sizeof(new_title_length)));
+							FAIL_IF(write(fd, new_title, new_title_length));
+
+							// reading the new title
+							FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+							char title1[incoming_length];
+							FAIL_IF(read(fd, title1, incoming_length));
+							title1[incoming_length - 1] = 0;
+
+							// searching for the title label
+							category_modifyer = category_modifyer->children;
+							while (category_modifyer != NULL)
+							{
+								if (!xmlStrcmp(category_modifyer->name, (const xmlChar *)"title")) // we found title label
+								{
+									printf("FOUND TITLE TO REPLACE\n");
+									xmlNodeSetContent(category_modifyer, BAD_CAST title1);
+									xmlKeepBlanksDefault(0); // for formatting purposes
+									xmlSaveFormatFile(user_file, document, 1);
+
+									// freeing whatever memory the parser used
+									xmlCleanupParser();
+									xmlFreeDoc(document);
+									return;
+								}
+								category_modifyer = category_modifyer->next;
+							}
+						}
+						break;
+						case PASSWORD:
+							break;
+						case URL:
+							break;
+						case INFORMATION:
+							break;
+						}
+						xmlKeepBlanksDefault(0); // for formatting purposes
+						xmlSaveFormatFile(user_file, document, 1);
+
+						// freeing whatever memory the parser used
+						xmlCleanupParser();
+						xmlFreeDoc(document);
+						return;
+					}
+				}
+				category = category->next;
+				category_modifyer = category;
+			}
+		}
+		current = current->next;
+	}
 }
 
 void xmlGetCategory(int32_t fd, char *user_file)
-{
-}
-
-void xmlGetCategoryByTitle(int32_t fd, char *user_file)
 {
 }

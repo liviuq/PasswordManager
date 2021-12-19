@@ -10,7 +10,6 @@ void xmlAddCategory(int32_t fd, char *user_file);
 void xmlRemoveCategory(int32_t fd, char *user_file);
 void xmlModifyCategory(int32_t fd, char *user_file);
 void xmlGetCategory(int32_t fd, char *user_file);
-void xmlGetCategoryByTitle(int32_t fd, char *user_file);
 int32_t xmlExistsTitle(char *user_file, char *title); //returns 1 if title exists in user_file, else returns 0.
 
 #endif
