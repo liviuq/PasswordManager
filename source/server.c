@@ -32,10 +32,9 @@
 // options
 #define ADD_CATEGORY 49
 #define GET_CATEGORY 50
-#define GET_CATEGORY_BY_TITLE 51
-#define RM_CATEGORY 52
-#define MODIFY_CATEGORY 53
-#define EXIT 54
+#define RM_CATEGORY 51
+#define MODIFY_CATEGORY 52
+#define EXIT 53
 
 // error checking
 #define FAIL_IF(EXP) (                                            \
@@ -254,9 +253,8 @@ int main(int argc, char **argv)
 						char *options = "Here are your "
 										"options for the password manager:\n"
 										"1) Add category\n2) Get categories\n"
-										"3) Get category by title\n4) Remove category\n"
-										"5) Modify data in category\n"
-										"6) Exit\nChoice:";
+										"3) Remove category\n4) Modify data in category\n"
+										"5) Exit\nChoice:";
 						int32_t options_length = strlen(options);
 
 						int32_t input_is_ok = 0;
@@ -277,7 +275,7 @@ int main(int argc, char **argv)
 							else
 							{
 								FAIL_IF(bytes_read = read(client, &choice, choice_length));
-								if (bytes_read == 2 && choice >= 49 && choice <= 54)
+								if (bytes_read == 2 && choice >= 49 && choice <= 53)
 									input_is_ok = 1;
 							}
 						}
@@ -296,9 +294,6 @@ int main(int argc, char **argv)
 							break;
 						case GET_CATEGORY:
 							xmlGetCategory(client, userxml);
-							break;
-						case GET_CATEGORY_BY_TITLE:
-							xmlGetCategoryByTitle(client, userxml);
 							break;
 						case EXIT:
 							exit_client = 1;
