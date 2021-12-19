@@ -521,9 +521,9 @@ void xmlModifyCategory(int32_t fd, char *user_file)
 		if (!xmlStrcmp(current->name, (const xmlChar *)"category")) // we found a category label, iterating to check for <title> category
 		{
 			xmlNodePtr category = current->children;
-			xmlNodePtr category_modifyer = category;
 			while (category != NULL)
 			{
+				xmlNodePtr category_modifyer = current;
 				if (!xmlStrcmp(category->name, BAD_CAST "title")) // we found the title label, check for actual content
 				{
 					xmlChar *key = xmlNodeListGetString(document, category->children, 1);
@@ -600,8 +600,8 @@ void xmlModifyCategory(int32_t fd, char *user_file)
 								}
 								category_modifyer = category_modifyer->next;
 							}
+							break;
 						}
-						break;
 						case PASSWORD:
 							break;
 						case URL:
@@ -619,7 +619,6 @@ void xmlModifyCategory(int32_t fd, char *user_file)
 					}
 				}
 				category = category->next;
-				category_modifyer = category;
 			}
 		}
 		current = current->next;
