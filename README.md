@@ -21,7 +21,8 @@ Then open how many clients you want:
 <loopback_ip_address> should be 127.0.0.1
 ```
 
-##To do's
+## To do's
+
 -After information retrieval, ask user if he wants the data to be stored locally.
 -Add username field for every category
 -Hash user.xml name, like user_hashed.xml
