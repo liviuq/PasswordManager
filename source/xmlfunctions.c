@@ -23,6 +23,7 @@ I am really tired.
 #define PASSWORD 50
 #define URL 51
 #define INFORMATION 52
+#define USERNAME 53
 
 int32_t xmlCheckPassword(char *docname, char *password)
 {
@@ -311,6 +312,18 @@ void xmlAddCategory(int32_t fd, char *user_file)
 	FAIL_IF(read(fd, title, incoming_length));
 	title[incoming_length - 1] = 0;
 
+	//"Input username"
+	const char *input_username = "Input an username for the account: \n";
+	int32_t input_username_length = strlen(input_username);
+	FAIL_IF(write(fd, &input_username_length, sizeof(input_username_length)));
+	FAIL_IF(write(fd, input_username, input_username_length));
+
+	// reading the username
+	FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+	char category_username[incoming_length];
+	FAIL_IF(read(fd, category_username, incoming_length));
+	category_username[incoming_length - 1] = 0;
+
 	//"Input password"
 	const char *input_password = "Input a password: \n";
 	int32_t input_password_length = strlen(input_password);
@@ -380,6 +393,7 @@ void xmlAddCategory(int32_t fd, char *user_file)
 		// adding the category
 		xmlNodePtr category_ptr = xmlNewChild(root, NULL, BAD_CAST "category", NULL);
 		xmlNewChild(category_ptr, NULL, BAD_CAST "title", BAD_CAST title);
+		xmlNewChild(category_ptr, NULL, BAD_CAST "username", BAD_CAST category_username);
 		xmlNewChild(category_ptr, NULL, BAD_CAST "password", BAD_CAST category_password);
 		xmlNewChild(category_ptr, NULL, BAD_CAST "url", BAD_CAST url);
 		xmlNewChild(category_ptr, NULL, BAD_CAST "notes", BAD_CAST notes);
@@ -540,7 +554,9 @@ void xmlModifyCategory(int32_t fd, char *user_file)
 												"1) Title\n"
 												"2) Password\n"
 												"3) URL\n"
-												"4) Informations.\nChoice:";
+												"4) Informations\n"
+												"5) Username\n"
+												"Choice:";
 						int32_t modifiers_length = strlen(modifiers);
 
 						int32_t input_is_ok = 0;
@@ -697,6 +713,38 @@ void xmlModifyCategory(int32_t fd, char *user_file)
 							}
 							break;
 						}
+						case USERNAME:
+						{
+							const char *new_information = "Input new information:\n";
+							int32_t new_information_length = strlen(new_information);
+							FAIL_IF(write(fd, &new_information_length, sizeof(new_information_length)));
+							FAIL_IF(write(fd, new_information, new_information_length));
+
+							// reading the new information
+							FAIL_IF(read(fd, &incoming_length, sizeof(incoming_length)));
+							char information1[incoming_length];
+							FAIL_IF(read(fd, information1, incoming_length));
+							information1[incoming_length - 1] = 0;
+
+							// searching for the information label
+							category_modifyer = category_modifyer->children;
+							while (category_modifyer != NULL)
+							{
+								if (!xmlStrcmp(category_modifyer->name, (const xmlChar *)"username")) // we found title label
+								{
+									xmlNodeSetContent(category_modifyer, BAD_CAST information1);
+									xmlKeepBlanksDefault(0); // for formatting purposes
+									xmlSaveFormatFile(user_file, document, 1);
+
+									// freeing whatever memory the parser used
+									xmlCleanupParser();
+									xmlFreeDoc(document);
+									return;
+								}
+								category_modifyer = category_modifyer->next;
+							}
+							break;
+						}
 						}
 						return;
 					}
@@ -766,8 +814,8 @@ void xmlGetCategory(int32_t fd, char *user_file)
 		current = current->next;
 	}
 
-	strcat(category_data, "Is the requested data matching your expectations?\n1) yes\n2) i have no other choice than to fail this class\nAnswer:");
-	//sending category_data to client
+	strcat(category_data, "Do you want to save the output to a file?\n1) Yes\n2) No:");
+	// sending category_data to client
 	int32_t category_data_length = strlen(category_data);
 	FAIL_IF(write(fd, &category_data_length, sizeof(category_data_length)));
 	FAIL_IF(write(fd, category_data, category_data_length));
