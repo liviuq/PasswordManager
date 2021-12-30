@@ -1,4 +1,6 @@
+
 # Password Manager
+
 Password Manager is a client/server application that serves as your digital password assistant.
 
 ## Installation
@@ -8,7 +10,9 @@ git clone git@github.com:liviuq/QuizzGame.git
 cd QuizzGame
 make
 ```
-*Ignore the name, even though this project is a lower class than Quizzgame, I enjoyed coding this project more because it's usage. I also learned how to use XML files. 
+
+*Ignore the name, even though this project is a lower class than Quizzgame, I enjoyed coding this project more because it's usage. I also learned how to use XML files.
+
 ## Usage
 
 ```bash
@@ -23,10 +27,10 @@ Then open how many clients you want:
 
 ## To do's
 
--After information retrieval, ask user if he wants the data to be stored locally.
--Add username field for every category
--Hash user.xml name, like user_hashed.xml
+```bash
 -Encrypt password?
+```
 
 ## License
+
 GNU General Public License v3.0
