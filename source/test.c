@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <sodium.h>
 
 int main(int argc, char **argv)
 {
@@ -59,6 +60,7 @@ int main(int argc, char **argv)
         current = current->next;
     }
 
+    //trying to hash something with libsodium
     //freeing the memory
     xmlFreeDoc(document);
     return EXIT_SUCCESS;
