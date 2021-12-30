@@ -11,6 +11,9 @@
 #include <libxml/parser.h>
 #include <sodium.h>
 
+#define PASSWORD "parola"
+#define KEY_LEN crypto_box_SEEDBYTES
+
 int main(int argc, char **argv)
 {
     xmlDocPtr document; // pointer to the document
@@ -60,8 +63,27 @@ int main(int argc, char **argv)
         current = current->next;
     }
 
-    //trying to hash something with libsodium
-    //freeing the memory
+    // trying to hash something with libsodium
+    if (sodium_init() < 0)
+    {
+        printf("[TEST] Sodium initialisation error.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    unsigned char salt[crypto_pwhash_SALTBYTES];
+    unsigned char key[KEY_LEN];
+    randombytes_buf(salt, sizeof salt);
+
+    if (crypto_pwhash(key, sizeof key, PASSWORD, strlen(PASSWORD), salt,
+                      crypto_pwhash_OPSLIMIT_INTERACTIVE, crypto_pwhash_MEMLIMIT_INTERACTIVE,
+                      crypto_pwhash_ALG_DEFAULT) != 0)
+    {
+        printf("[TEST] Out of memory in pwhash.\n");
+        exit(EXIT_FAILURE);
+    }
+
+
+    // freeing the memory
     xmlFreeDoc(document);
     return EXIT_SUCCESS;
 }
