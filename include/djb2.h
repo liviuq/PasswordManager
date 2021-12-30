@@ -8,6 +8,15 @@ of the information. And it is an opportunity to learn about hashing in general
 #define DJB2_H_
 
 unsigned long
-hash(unsigned char *str);
+djb2(unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
 
 #endif
