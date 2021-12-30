@@ -11,6 +11,7 @@
 #include <libxml/parser.h>
 
 #include "xmlfunctions.h"
+#include "djb2.h"
 
 // colors
 #define BLACK "\033[30m"
@@ -189,7 +190,8 @@ int main(int argc, char **argv)
 
 							// generate the name of the file to be opened
 							memset(userxml, 0, 255);
-							strcat(userxml, username);
+							uint64_t name = djb2((unsigned char*)username);
+							snprintf(userxml, length + 1, "%ld", name);
 							strcat(userxml, ".xml");
 
 							int register_bit = 0;
@@ -267,6 +269,18 @@ int main(int argc, char **argv)
 							// Verify that you read at most 2 bytes so the input is valid
 							// otherwise, loop untill you get the correct input
 							FAIL_IF(bytes_read = read(client, &choice_length, sizeof(choice_length)));
+							if (bytes_read == 0) // user CTRL+C'd
+							{
+								fflush(stdout);
+								printf("[SERVER] Client CTRL+C'd\n");
+								fflush(stdout);
+								xmlReplaceLoginField(userxml, 0);
+								free(username);
+								free(password);
+								free(userxml);
+								close(client);
+								return EXIT_SUCCESS;
+							}
 							if (choice_length > 2) // answer too big to fit in one byte, so we consume the rest
 							{
 								char temp[1024];
@@ -284,10 +298,10 @@ int main(int argc, char **argv)
 						switch (choice)
 						{
 						case ADD_CATEGORY:
-							xmlAddCategory(client, userxml); //done
+							xmlAddCategory(client, userxml); // done
 							break;
 						case RM_CATEGORY:
-							xmlRemoveCategory(client, userxml); //removes the category that has the title as the user entered 
+							xmlRemoveCategory(client, userxml); // removes the category that has the title as the user entered
 							break;
 						case MODIFY_CATEGORY:
 							xmlModifyCategory(client, userxml);

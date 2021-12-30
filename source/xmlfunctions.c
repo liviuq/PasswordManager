@@ -7,6 +7,10 @@ I am really tired.
 #include <unistd.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
 #include <errno.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
@@ -27,7 +31,6 @@ I am really tired.
 
 int32_t xmlCheckPassword(char *docname, char *password)
 {
-
 	xmlDocPtr document; // pointer to the document
 	xmlNodePtr current; // node pointer ot interact with individual nodes
 
@@ -134,7 +137,6 @@ int32_t xmlCheckLogin(char *docname)
 				xmlFreeDoc(document);
 				return 0; // logged off
 			}
-			xmlFreeDoc(document);
 		}
 		current = current->next;
 	}
@@ -161,36 +163,7 @@ void xmlCreateUser(const char *name, const char *password)
 	xmlKeepBlanksDefault(0);
 	xmlSaveFormatFile(name, new_document, 1);
 	xmlFreeDoc(new_document);
-
 	xmlCleanupParser();
-}
-
-void xmlOpenUserFile(char *docname, xmlDocPtr document, xmlNodePtr current)
-{
-	// opening the document
-	// checkikng to see if the document was successfully parsed
-	if ((document = xmlParseFile(docname)) == NULL)
-	{
-		printf("Error on parsing the doc\n");
-		exit(EXIT_FAILURE);
-	}
-
-	// retrieve document's root element
-	// check to see if document actually has something in it
-	if ((current = xmlDocGetRootElement(document)) == NULL)
-	{
-		printf("Error on parsing the doc\n");
-		xmlFreeDoc(document);
-		exit(EXIT_FAILURE);
-	}
-
-	// check to see that we opened the right type of document
-	if (xmlStrcmp(current->name, (const xmlChar *)"user"))
-	{
-		printf("Error on the doc\n");
-		xmlFreeDoc(document);
-		exit(EXIT_FAILURE);
-	}
 }
 
 void xmlReplaceLoginField(char *docname, int32_t loginVal)
@@ -286,6 +259,7 @@ int32_t xmlExistsTitle(char *user_file, char *title)
 						xmlFreeDoc(document);
 						return 1;
 					}
+					xmlFree(key);
 				}
 				category = category->next;
 			}
@@ -294,6 +268,7 @@ int32_t xmlExistsTitle(char *user_file, char *title)
 	}
 
 	// we did not find a category with title, return 0
+	xmlFreeDoc(document);
 	return 0;
 }
 
@@ -476,6 +451,8 @@ void xmlRemoveCategory(int32_t fd, char *user_file)
 						xmlFreeDoc(document);
 						return;
 					}
+
+					xmlFree(key);
 				}
 				category = category->next;
 			}
@@ -814,6 +791,9 @@ void xmlGetCategory(int32_t fd, char *user_file)
 		current = current->next;
 	}
 
+	char *only_data = malloc(sizeof(char) * strlen(category_data));
+	strcpy(only_data, category_data);
+
 	strcat(category_data, "Do you want to save the output to a file?\n1) Yes\n2) No:");
 	// sending category_data to client
 	int32_t category_data_length = strlen(category_data);
@@ -827,4 +807,23 @@ void xmlGetCategory(int32_t fd, char *user_file)
 	char temporary_storage[incoming_length];
 	FAIL_IF(read(fd, temporary_storage, incoming_length));
 	temporary_storage[incoming_length - 1] = 0;
+
+	if (!strcmp(temporary_storage, "1"))
+	{
+		// generating a file to save the data
+		char text[100];
+		time_t now = time(NULL);
+		struct tm *t = localtime(&now);
+
+		strftime(text, sizeof(text) - 1, "%d_%m_%Y_%H_%M_%S", t);
+
+		// creating the dump file
+		int32_t outfd = open(text, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		FAIL_IF(write(outfd, only_data, strlen(only_data)));
+		close(outfd);
+
+		// freeing only_data
+		free(only_data);
+		only_data = NULL;
+	}
 }
