@@ -6,12 +6,12 @@ Password Manager is a client/server application that serves as your digital pass
 ## Installation
 
 ```bash
-git clone git@github.com:liviuq/QuizzGame.git
-cd QuizzGame
+git clone git@github.com:liviuq/PasswordManager.git
+cd PasswordManager 
 make
 ```
 
-*Ignore the name, even though this project is a lower class than Quizzgame, I enjoyed coding this project more because it's usage. I also learned how to use XML files.
+--*Ignore the name, even though this project is a lower class than Quizzgame, I enjoyed coding this project more because it's usage. I also learned how to use XML files.--
 
 ## Usage
 
@@ -28,7 +28,7 @@ Then open how many clients you want:
 ## To do's
 
 ```bash
--Encrypt password?
+Done everything
 ```
 
 ## License
